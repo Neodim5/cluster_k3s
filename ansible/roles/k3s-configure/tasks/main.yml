@@ -1,0 +1,3 @@
+---
+# Empty tasks file for k3s-configure role
+# Configuration is handled in playbooks/configure_cluster.yml
