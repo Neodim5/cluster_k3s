@@ -21,7 +21,7 @@
 - `yandex.tfvars` - переменные для развертывания в Yandex Cloud
 - `templates/simple.tfvars`, `templates/middle.tfvars`, `templates/custom.tfvars` - шаблоны конфигурации кластера
 
-### 1.2. Настройка Proxmox VE (proxmox.tfvars)
+### 3.2. Настройка Proxmox VE (proxmox.tfvars)
 
 Откройте файл `terraform/proxmox.tfvars` и заполните следующие параметры:
 
@@ -130,7 +130,7 @@ installation_method = "ansible"
 6. **Скопируйте секрет токена** - он показывается только один раз!
 7. Вставьте секрет в `proxmox_api_token_secret`
 
-### 1.3. Настройка Yandex Cloud (yandex.tfvars)
+### 3.3. Настройка Yandex Cloud (yandex.tfvars)
 
 Если планируете использовать Yandex Cloud, заполните `terraform/yandex.tfvars`:
 
@@ -189,7 +189,7 @@ k3s_version = "v1.28.5+k3s1"
 installation_method = "ansible"
 ```
 
-### 1.4. Шаблоны конфигурации кластера
+### 3.4. Шаблоны конфигурации кластера
 
 #### Simple шаблон (templates/simple.tfvars)
 ```hcl
@@ -226,11 +226,11 @@ custom_options = {
 
 ---
 
-## 2. Создание шаблона ВМ в Proxmox VE
+## 4. Создание шаблона ВМ в Proxmox VE
 
 Для работы установщика необходим шаблон виртуальной машины с предустановленной ОС и cloud-init.
 
-### 2.1. Требования к шаблону
+### 4.1. Требования к шаблону
 
 - **ОС**: Ubuntu 22.04 LTS (рекомендуется) или Ubuntu 20.04 LTS
 - **Cloud-init**: должен быть установлен и настроен
@@ -238,7 +238,7 @@ custom_options = {
 - **Python3**: необходим для работы Ansible
 - **QEMU Guest Agent**: рекомендуется для лучшей интеграции с Proxmox
 
-### 2.2. Пошаговая инструкция создания шаблона
+### 4.2. Пошаговая инструкция создания шаблона
 
 #### Шаг 1: Загрузка образа ISO
 
@@ -395,7 +395,7 @@ sudo shutdown now
 
 3. Обновите `template_vm_id` в `proxmox.tfvars` на новый ID
 
-### 2.3. Альтернативный способ: загрузка готового cloud-image
+### 4.3. Альтернативный способ: загрузка готового cloud-image
 
 Можно использовать готовый cloud-image Ubuntu:
 
@@ -421,9 +421,9 @@ qm template 9000
 
 ---
 
-## 3. Запуск установки кластера
+## 5. Запуск установки кластера
 
-### 3.1. Предварительные требования
+### 5.1. Предварительные требования
 
 Перед запуском убедитесь, что:
 - ✅ Заполнены все необходимые переменные в `.tfvars` файлах
@@ -433,7 +433,7 @@ qm template 9000
 - ✅ Установлен k3sup (если выбран метод установки "k3sup")
 - ✅ Есть доступ к API Proxmox или авторизация в Yandex Cloud
 
-### 3.2. Установка зависимостей
+### 5.2. Установка зависимостей
 
 ```bash
 # Установка Terraform (для Ubuntu/Debian)
@@ -450,7 +450,7 @@ curl -sLS https://get.k3sup.dev | sh
 sudo mv k3sup /usr/local/bin/
 ```
 
-### 3.3. Инициализация Terraform
+### 5.3. Инициализация Terraform
 
 ```bash
 # Перейдите в директорию terraform
@@ -469,7 +469,7 @@ terraform plan -var-file="proxmox.tfvars" -var-file="templates/simple.tfvars"
 terraform plan -var-file="yandex.tfvars" -var-file="templates/simple.tfvars"
 ```
 
-### 3.4. Развертывание инфраструктуры
+### 5.4. Развертывание инфраструктуры
 
 ```bash
 # Примените конфигурацию (для Proxmox)
@@ -481,7 +481,7 @@ terraform apply -var-file="proxmox.tfvars" -var-file="templates/simple.tfvars"
 # Сохраните этот вывод - там есть IP адреса нод
 ```
 
-### 3.5. Запуск Ansible/k3sup
+### 5.5. Запуск Ansible/k3sup
 
 После успешного создания ВМ скрипт `install.sh` автоматически запустит настройку:
 
@@ -526,9 +526,9 @@ cd scripts
 
 ---
 
-## 4. Проверка результата
+## 6. Проверка результата
 
-### 4.1. Проверка статуса нод
+### 6.1. Проверка статуса нод
 
 ```bash
 # Подключитесь к мастер-ноде
@@ -544,7 +544,7 @@ kubectl get nodes
 # worker-2       Ready    <none>                 4m    v1.28.5+k3s1
 ```
 
-### 4.2. Проверка подов
+### 6.2. Проверка подов
 
 ```bash
 # Проверьте системные поды
@@ -553,7 +553,7 @@ kubectl get pods -A
 # Все поды должны быть в статусе Running
 ```
 
-### 4.3. Проверка сервисов
+### 6.3. Проверка сервисов
 
 ```bash
 # Проверьте сервисы
@@ -563,7 +563,7 @@ kubectl get svc -A
 kubectl get pods -n kube-system -l app=traefik
 ```
 
-### 4.4. Доступ к кластеру с локальной машины
+### 6.4. Доступ к кластеру с локальной машины
 
 ```bash
 # Скопируйте kubeconfig с мастер-ноды
@@ -578,9 +578,9 @@ kubectl get nodes
 
 ---
 
-## 5. Устранение неполадок
+## 7. Устранение неполадок
 
-### 5.1. Проблемы с Terraform
+### 7.1. Проблемы с Terraform
 
 **Ошибка: "connection to proxmox failed"**
 - Проверьте правильность `proxmox_api_url`
@@ -596,7 +596,7 @@ kubectl get nodes
 - Расширьте диапазон в `ip_range_start` и `ip_range_end`
 - Или используйте статические IP адреса
 
-### 5.2. Проблемы с Ansible
+### 7.2. Проблемы с Ansible
 
 **Ошибка: "Failed to connect to the host via ssh"**
 - Проверьте, что у вас есть SSH ключи для доступа к ВМ
@@ -607,7 +607,7 @@ kubectl get nodes
 - Убедитесь, что Python 3 установлен в шаблоне ВМ
 - Добавьте установку python3 в процесс создания шаблона
 
-### 5.3. Проблемы с k3s
+### 7.3. Проблемы с k3s
 
 **Ноды не подключаются к кластеру**
 - Проверьте сетевую связность между нодами
@@ -618,7 +618,7 @@ kubectl get nodes
 - Проверьте доступные ресурсы (CPU, память)
 - Проверьте события: `kubectl get events --sort-by='.lastTimestamp'`
 
-### 5.4. Полезные команды для диагностики
+### 7.4. Полезные команды для диагностики
 
 ```bash
 # Просмотр логов cloud-init

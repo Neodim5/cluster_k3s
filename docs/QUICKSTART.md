@@ -34,6 +34,10 @@ cd /workspace
 Create environment-specific configuration:
 
 ```bash
+# Option 1: Use the setup script (recommended)
+./scripts/setup.sh -e dev -c proxmox -t simple
+
+# Option 2: Manual setup
 # Copy example configuration
 cp terraform/environments/dev/proxmox.tfvars.example terraform/environments/dev/proxmox.tfvars
 
