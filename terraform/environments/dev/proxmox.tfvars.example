@@ -1,0 +1,152 @@
+# === Proxmox VE Provider Configuration Example ===
+# Скопируйте этот файл в proxmox.tfvars и заполните актуальными значениями
+# cp proxmox.tfvars.example proxmox.tfvars
+
+# === Общие настройки провайдера ===
+
+# Адрес API Proxmox VE (например, https://192.168.1.100:8006/api2/json)
+# Замените <IP_АДРЕС_PROXMOX> на реальный IP адрес вашего сервера Proxmox
+proxmox_api_url = "https://<IP_АДРЕС_PROXMOX>:8006/api2/json"
+
+# Имя пользователя для API (формат: username@realm, например, root@pam)
+proxmox_api_token_id = "root@pam"
+
+# Токен API (создается в интерфейсе Proxmox: Datacenter -> Permissions -> API Tokens)
+# ИНСТРУКЦИЯ ПО СОЗДАНИЮ ТОКЕНА:
+# 1. Откройте веб-интерфейс Proxmox VE
+# 2. Перейдите в Datacenter -> Permissions -> API Tokens
+# 3. Нажмите Add
+# 4. Укажите User: root@pam (или другой пользователь с правами администратора)
+# 5. Token ID: любое имя, например, terraform
+# 6. Privilege Separation: снимите галочку
+# 7. Нажмите Add и СКОПИРУЙТЕ секрет токена (показывается только один раз!)
+# 8. Вставьте секрет ниже вместо YOUR_TOKEN_SECRET_HERE
+proxmox_api_token_secret = "YOUR_TOKEN_SECRET_HERE"
+
+# Отключить проверку SSL сертификата (для самоподписанных сертификатов)
+# Установите true, если используете самоподписанные сертификаты Proxmox
+proxmox_tls_insecure = true
+
+
+# === Настройки окружения ===
+
+# Идентификатор узла Proxmox (например, "pve", "node1" и т.д.)
+# Узнать можно в веб-интерфейсе Proxmox - название вашего узла
+proxmox_node = "pve"
+
+# ID хранилища для облачных образов (обычно "local" или "local-lvm")
+# Узнать доступные хранилища: pvesm status
+storage_pool = "local"
+
+# Сетевой мост для подключения ВМ
+# Обычно vmbr0 - первый мост, но может быть другим в вашей сети
+network_bridge = "vmbr0"
+
+
+# === Шаблон ВМ ===
+
+# ID шаблона ВМ (создается вручную перед запуском terraform)
+# ИНСТРУКЦИЯ ПО СОЗДАНИЮ ШАБЛОНА:
+# См. docs/setup_guide.md раздел "2. Создание шаблона ВМ в Proxmox VE"
+# Кратко:
+# 1. Создайте ВМ с Ubuntu 22.04 LTS
+# 2. Установите cloud-init, python3, qemu-guest-agent
+# 3. Очистите систему и выключите ВМ
+# 4. Конвертируйте ВМ в шаблон (Convert to template)
+# 5. Укажите ID шаблона здесь
+template_vm_id = 9000
+
+# Базовое имя для ВМ кластера (к имени будет добавляться суффикс -master-1, -worker-1 и т.д.)
+vm_name_prefix = "k3s-cluster"
+
+
+# === Ресурсы для ВМ ===
+
+# Количество CPU ядер на ноду
+# Рекомендуется минимум 2 для master нод, 2+ для worker
+vm_cpu_cores = 2
+
+# Объем оперативной памяти на ноду (в МБ)
+# Рекомендуется минимум 2048 MB для worker, 4096 MB для master
+vm_memory_mb = 4096
+
+# Размер системного диска (в ГБ)
+vm_disk_size_gb = 40
+
+# Тип диска (scsi, virtio, ide)
+# scsi - рекомендуется для производительности
+vm_disk_type = "scsi"
+
+
+# === Сетевые настройки ===
+
+# Статический IP адрес для первой мастер-ноды (опционально, если не используется DHCP)
+# Если пусто, будет использоваться DHCP из диапазона ip_range_start-ip_range_end
+# Пример: master_static_ip = "192.168.1.50"
+master_static_ip = ""
+
+# Маска подсети (CIDR формат, например "24" для 255.255.255.0)
+subnet_mask = "24"
+
+# Шлюз по умолчанию
+# Укажите IP адрес вашего роутера/шлюза
+gateway = "192.168.1.1"
+
+# DNS серверы (через запятую)
+# Можно использовать публичные DNS или ваши локальные
+dns_servers = "8.8.8.8,8.8.4.4"
+
+# Диапазон IP адресов для динамического выделения (если не указаны статические)
+# Формат: начальный_ip и конечный_ip отдельно
+# Убедитесь, что диапазон находится в одной подсети с gateway
+ip_range_start = "192.168.1.100"
+ip_range_end = "192.168.1.200"
+
+
+# === Настройки кластера ===
+
+# Тип шаблона развертывания: "simple", "middle", "custom"
+# simple - 1 мастер + worker ноды (для разработки/тестирования)
+# middle - 3 мастера (HA) + worker ноды (для production)
+# custom - произвольное количество мастеров и workers
+deployment_template = "simple"
+
+# Для custom шаблона: количество мастер-нод (минимум 1)
+# Используется только при deployment_template = "custom"
+custom_master_count = 1
+
+# Для custom шаблона: количество worker-нод
+# Используется только при deployment_template = "custom"
+custom_worker_count = 2
+
+# Версия k3s для установки
+# Доступные версии: https://github.com/k3s-io/k3s/releases
+k3s_version = "v1.28.5+k3s1"
+
+# Метод установки: "ansible" или "k3sup"
+# ansible - установка через Ansible роли (рекомендуется)
+# k3sup - установка через утилиту k3sup (быстрее, но меньше возможностей)
+installation_method = "ansible"
+
+
+# === SSH настройки ===
+
+# Путь к приватному SSH ключу для доступа к нодам
+# Ключ будет автоматически добавлен к ВМ через cloud-init
+# Рекомендуется использовать отдельный ключ для кластера:
+# ssh-keygen -t ed25519 -f ~/.ssh/k3s_cluster -N ""
+ssh_private_key_path = "~/.ssh/id_rsa"
+
+# Пользователь для подключения к нодам
+# Должен соответствовать пользователю в шаблоне ВМ
+ssh_user = "ubuntu"
+
+
+# === Дополнительные опции ===
+
+# Теги для созданных ВМ (помогают в идентификации в интерфейсе Proxmox)
+vm_tags = ["k3s", "cluster", "auto-provisioned"]
+
+# Включить логирование Terraform (для отладки)
+# При true логи будут записываться в terraform.log
+enable_terraform_logging = false

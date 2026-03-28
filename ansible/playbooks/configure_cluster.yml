@@ -1,0 +1,39 @@
+---
+- name: Configure K3S cluster
+  hosts: masters[0]
+  become: true
+  gather_facts: true
+  
+  tasks:
+    - name: Ensure .kube directory exists
+      file:
+        path: "{{ ansible_user_dir }}/.kube"
+        state: directory
+        owner: "{{ ansible_user_id }}"
+        group: "{{ ansible_user_id }}"
+        mode: '0755'
+        
+    - name: Copy kubeconfig
+      copy:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: "{{ ansible_user_dir }}/.kube/config"
+        remote_src: yes
+        owner: "{{ ansible_user_id }}"
+        group: "{{ ansible_user_id }}"
+        mode: '0600'
+        
+    - name: Install kubectl (if not present)
+      apt:
+        name: kubectl
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+      
+    - name: Verify cluster access
+      shell: k3s kubectl cluster-info
+      register: cluster_info
+      changed_when: false
+      
+    - name: Display cluster info
+      debug:
+        var: cluster_info.stdout_lines
