@@ -1,0 +1,85 @@
+---
+- name: Prepare hosts for K3S installation
+  hosts: k3s_cluster
+  become: true
+  gather_facts: true
+  
+  vars:
+    cloud_provider: "{{ cloud_provider | default('proxmox') }}"
+    
+  pre_tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      when: ansible_os_family == "Debian"
+      
+    - name: Install required packages
+      package:
+        name:
+          - curl
+          - wget
+          - apt-transport-https
+          - ca-certificates
+          - software-properties-common
+        state: present
+
+  roles:
+    - role: prepare-host
+    
+  tasks:
+    - name: Disable swap
+      shell: |
+        swapoff -a
+        sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
+      tags: [swap, k3s]
+      
+    - name: Load required kernel modules
+      modprobe:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - overlay
+        - br_netfilter
+      tags: [kernel, k3s]
+      
+    - name: Enable kernel modules on boot
+      copy:
+        dest: /etc/modules-load.d/k8s.conf
+        content: |
+          overlay
+          br_netfilter
+        mode: '0644'
+      tags: [kernel, k3s]
+      
+    - name: Configure sysctl for Kubernetes networking
+      sysctl:
+        name: "{{ item.name }}"
+        value: "{{ item.value }}"
+        state: present
+        reload: yes
+      loop:
+        - { name: 'net.bridge.bridge-nf-call-iptables', value: '1' }
+        - { name: 'net.bridge.bridge-nf-call-ip6tables', value: '1' }
+        - { name: 'net.ipv4.ip_forward', value: '1' }
+      tags: [sysctl, k3s]
+      
+    - name: Set timezone
+      timezone:
+        name: UTC
+      tags: [system]
+      
+    - name: Configure hostname
+      hostname:
+        name: "{{ inventory_hostname }}"
+      tags: [network]
+      
+    - name: Add hosts file entries
+      blockinfile:
+        path: /etc/hosts
+        block: |
+          {% for host in groups['k3s_cluster'] %}
+          {{ hostvars[host]['ansible_host'] }} {{ host }}
+          {% endfor %}
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - K3S HOSTS"
+      tags: [network]

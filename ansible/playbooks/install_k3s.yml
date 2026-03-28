@@ -1,0 +1,144 @@
+---
+- name: Install K3S cluster
+  hosts: k3s_cluster
+  become: true
+  gather_facts: true
+  
+  vars:
+    template: "{{ template | default('simple') }}"
+    k3s_version: "v1.28.5+k3s1"
+    k3s_install_dir: /usr/local/bin
+    k3s_config_dir: /etc/rancher/k3s
+    k3s_data_dir: /var/lib/rancher/k3s
+    
+  pre_tasks:
+    - name: Verify master node exists
+      assert:
+        that: groups['masters'] | length > 0
+        fail_msg: "At least one master node is required"
+      run_once: true
+      
+    - name: Set cluster configuration based on template
+      include_vars: "../../templates/{{ template }}.yml"
+      tags: [config]
+
+  roles:
+    - role: k3s-install
+    
+  tasks:
+    # Install first master (server)
+    - name: Install K3S on first master
+      hosts: masters[0]
+      any_errors_fatal: true
+      tasks:
+        - name: Download K3S install script
+          get_url:
+            url: https://get.k3s.io
+            dest: /tmp/install_k3s.sh
+            mode: '0755'
+            
+        - name: Install K3S server
+          shell: |
+            export INSTALL_K3S_VERSION={{ k3s_version }}
+            /tmp/install_k3s.sh server \
+              --cluster-init \
+              --node-ip {{ ansible_host }} \
+              --node-name {{ inventory_hostname }}
+          args:
+            creates: "{{ k3s_install_dir }}/k3s"
+            
+        - name: Wait for K3S to be ready
+          wait_for:
+            path: /var/lib/rancher/k3s/server/token
+            timeout: 60
+            
+        - name: Read cluster token
+          slurp:
+            src: /var/lib/rancher/k3s/server/token
+          register: cluster_token
+          
+        - name: Store token for other nodes
+          set_fact:
+            k3s_token: "{{ cluster_token.content | b64decode | trim }}"
+            
+        - name: Copy kubeconfig to home directory
+          copy:
+            src: /etc/rancher/k3s/k3s.yaml
+            dest: "{{ ansible_user_dir }}/.kube/config"
+            remote_src: yes
+            owner: "{{ ansible_user_id }}"
+            group: "{{ ansible_user_id }}"
+            mode: '0600'
+          when: inventory_hostname == groups['masters'][0]
+
+    # Install additional masters (HA setup)
+    - name: Install K3S on additional masters
+      hosts: masters[1:]
+      any_errors_fatal: true
+      tasks:
+        - name: Get first master IP
+          set_fact:
+            first_master_ip: "{{ hostvars[groups['masters'][0]]['ansible_host'] }}"
+            
+        - name: Download K3S install script
+          get_url:
+            url: https://get.k3s.io
+            dest: /tmp/install_k3s.sh
+            mode: '0755'
+            
+        - name: Install K3S server (additional master)
+          shell: |
+            export INSTALL_K3S_VERSION={{ k3s_version }}
+            export K3S_TOKEN={{ hostvars[groups['masters'][0]]['k3s_token'] }}
+            /tmp/install_k3s.sh server \
+              --server https://{{ first_master_ip }}:6443 \
+              --node-ip {{ ansible_host }} \
+              --node-name {{ inventory_hostname }}
+          args:
+            creates: "{{ k3s_install_dir }}/k3s"
+
+    # Install worker nodes
+    - name: Install K3S on workers
+      hosts: workers
+      any_errors_fatal: true
+      tasks:
+        - name: Get first master IP
+          set_fact:
+            first_master_ip: "{{ hostvars[groups['masters'][0]]['ansible_host'] }}"
+            
+        - name: Download K3S install script
+          get_url:
+            url: https://get.k3s.io
+            dest: /tmp/install_k3s.sh
+            mode: '0755'
+            
+        - name: Install K3S agent
+          shell: |
+            export INSTALL_K3S_VERSION={{ k3s_version }}
+            export K3S_TOKEN={{ hostvars[groups['masters'][0]]['k3s_token'] }}
+            /tmp/install_k3s.sh agent \
+              --server https://{{ first_master_ip }}:6443 \
+              --node-ip {{ ansible_host }} \
+              --node-name {{ inventory_hostname }}
+          args:
+            creates: "{{ k3s_install_dir }}/k3s"
+
+    # Verify cluster
+    - name: Verify cluster health
+      hosts: masters[0]
+      tasks:
+        - name: Wait for all nodes to be ready
+          shell: k3s kubectl get nodes --no-headers | grep -c " Ready"
+          register: node_count
+          until: node_count.stdout|int == (groups['k3s_cluster'] | length)
+          retries: 30
+          delay: 10
+          changed_when: false
+          
+        - name: Display cluster nodes
+          shell: k3s kubectl get nodes -o wide
+          register: nodes_output
+          
+        - name: Print cluster status
+          debug:
+            var: nodes_output.stdout_lines

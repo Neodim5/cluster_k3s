@@ -1,0 +1,36 @@
+---
+# Simple template: 1 master, workers added as needed
+template_name: simple
+description: "Single master node with worker nodes"
+
+k3s_config:
+  masters_count: 1
+  workers_count: "{{ workers_count | default(1) }}"
+  
+  # K3S configuration
+  cluster_cidr: "10.42.0.0/16"
+  service_cidr: "10.43.0.0/16"
+  
+  # Master node configuration
+  master_nodes:
+    - name: k3s-master-1
+      role: server
+      extra_args: ""
+  
+  # Worker node configuration  
+  worker_nodes:
+    - name_prefix: k3s-worker
+      count: "{{ workers_count | default(1) }}"
+      extra_args: ""
+
+addons:
+  metrics_server: true
+  local_path_storage: true
+  ingress_controller: true
+  
+ingress:
+  type: traefik
+  replicas: 1
+
+monitoring:
+  enabled: false

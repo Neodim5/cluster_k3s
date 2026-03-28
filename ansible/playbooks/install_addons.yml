@@ -1,0 +1,86 @@
+---
+- name: Install K3S cluster addons
+  hosts: masters[0]
+  become: true
+  gather_facts: true
+  
+  vars:
+    metrics_server_enabled: true
+    local_path_storage_enabled: true
+    ingress_controller_enabled: true
+    
+  tasks:
+    - name: Wait for cluster to be fully ready
+      shell: k3s kubectl wait --for=condition=ready nodes --all --timeout=120s
+      register: nodes_ready
+      changed_when: false
+      retries: 5
+      delay: 10
+      until: nodes_ready.rc == 0
+      
+    # Metrics Server
+    - name: Install Metrics Server
+      when: metrics_server_enabled
+      block:
+        - name: Check if metrics-server is installed
+          shell: k3s kubectl get deployment metrics-server -n kube-system
+          register: metrics_check
+          failed_when: false
+          changed_when: false
+          
+        - name: Deploy Metrics Server
+          shell: |
+            k3s kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+            k3s kubectl patch deployment metrics-server -n kube-system --type='json' -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-insecure-tls"}]'
+          when: metrics_check.rc != 0
+          
+        - name: Wait for Metrics Server to be ready
+          shell: k3s kubectl wait --for=condition=available deployment/metrics-server -n kube-system --timeout=120s
+          when: metrics_check.rc != 0
+
+    # Local Path Storage
+    - name: Configure Local Path Storage
+      when: local_path_storage_enabled
+      block:
+        - name: Set default storage class
+          shell: |
+            k3s kubectl patch storageclass local-path -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+          failed_when: false
+          
+    # Ingress Controller (if Traefik is disabled)
+    - name: Install NGINX Ingress Controller
+      when: ingress_controller_enabled
+      block:
+        - name: Check if ingress controller exists
+          shell: k3s kubectl get deployment nginx-ingress-controller -n ingress-nginx
+          register: ingress_check
+          failed_when: false
+          changed_when: false
+          
+        - name: Deploy NGINX Ingress Controller
+          shell: k3s kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/baremetal/deploy.yaml
+          when: ingress_check.rc != 0
+          
+        - name: Wait for Ingress Controller to be ready
+          shell: k3s kubectl wait --for=condition=available deployment/ingress-nginx-controller -n ingress-nginx --timeout=120s
+          when: ingress_check.rc != 0
+          failed_when: false
+
+    # Display addon status
+    - name: Show installed addons
+      shell: k3s kubectl get pods -n kube-system -o wide
+      register: addons_status
+      changed_when: false
+      
+    - name: Print addon status
+      debug:
+        var: addons_status.stdout_lines
+        
+    - name: Show all namespaces
+      shell: k3s kubectl get namespaces
+      register: namespaces
+      changed_when: false
+      
+    - name: Print namespaces
+      debug:
+        var: namespaces.stdout_lines

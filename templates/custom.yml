@@ -1,0 +1,64 @@
+---
+# Custom template: User-defined masters and workers
+template_name: custom
+description: "Custom cluster configuration with user-defined node counts"
+
+# These values should be overridden via command line or extra vars
+k3s_config:
+  masters_count: "{{ masters_count | default(1) }}"
+  workers_count: "{{ workers_count | default(1) }}"
+  
+  # K3S configuration
+  cluster_cidr: "{{ cluster_cidr | default('10.42.0.0/16') }}"
+  service_cidr: "{{ service_cidr | default('10.43.0.0/16') }}"
+  
+  # Database backend (for HA with >1 master)
+  datastore:
+    type: "{{ datastore_type | default('embedded_etcd') }}"
+    endpoint: "{{ datastore_endpoint | default('') }}"
+  
+  # Master nodes - dynamically generated based on masters_count
+  master_nodes: "{{ master_nodes_list | default([]) }}"
+  
+  # Worker nodes - dynamically generated based on workers_count
+  worker_nodes: "{{ worker_nodes_list | default([]) }}"
+
+# K3S server arguments
+server_args:
+  - "--disable traefik"  # Optional: disable default ingress
+  - "--kube-apiserver-arg enable-admission-plugins=NodeRestriction"
+  
+# K3S agent arguments
+agent_args:
+  - "--node-label app=worker"
+
+addons:
+  metrics_server: "{{ enable_metrics | default(true) }}"
+  local_path_storage: "{{ enable_local_storage | default(true) }}"
+  ingress_controller: "{{ enable_ingress | default(false) }}"
+  
+ingress:
+  type: "{{ ingress_type | default('nginx') }}"
+  replicas: "{{ ingress_replicas | default(2) }}"
+
+monitoring:
+  enabled: "{{ monitoring_enabled | default(false) }}"
+  prometheus: "{{ prometheus_enabled | default(false) }}"
+  grafana: "{{ grafana_enabled | default(false) }}"
+
+loadbalancer:
+  enabled: "{{ lb_enabled | default(false) }}"
+  type: "{{ lb_type | default('metallb') }}"
+  ip_range: "{{ lb_ip_range | default('') }}"
+
+# Custom node labels
+node_labels:
+  masters:
+    - "node-role.kubernetes.io/master="
+  workers:
+    - "node-role.kubernetes.io/worker="
+
+# Taints
+taints:
+  masters: []
+  workers: []

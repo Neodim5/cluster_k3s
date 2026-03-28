@@ -1,0 +1,22 @@
+---
+galaxy_info:
+  author: K3S Installer
+  description: Configure K3S Kubernetes cluster
+  company: Your Company
+  license: MIT
+  min_ansible_version: "2.10"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+    - name: Debian
+      versions:
+        - bullseye
+        - bookworm
+  galaxy_tags:
+    - k3s
+    - kubernetes
+    - configure
+
+dependencies: []
