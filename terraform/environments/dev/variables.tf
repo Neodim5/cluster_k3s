@@ -21,30 +21,34 @@ variable "template" {
 variable "proxmox_api_url" {
   description = "Proxmox API URL"
   type        = string
-  default     = "https://proxmox.example.com:8006/api2/json"
 }
 
 variable "proxmox_api_token" {
-  description = "Proxmox API Token"
+  description = "Proxmox API Token (format: user@realm!tokenid=secret)"
   type        = string
   sensitive   = true
+}
+
+variable "proxmox_node" {
+  description = "Proxmox node name where VMs will be created"
+  type        = string
+  default     = "pve"
 }
 
 # VM Configuration
 variable "vm_template_id" {
   description = "Proxmox VM template ID to clone from"
   type        = number
-  default     = 100
 }
 
 variable "storage" {
-  description = "Proxmox storage name"
+  description = "Proxmox storage name (e.g., local-lvm, ceph-pool)"
   type        = string
   default     = "local-lvm"
 }
 
 variable "network_bridge" {
-  description = "Proxmox network bridge"
+  description = "Proxmox network bridge (e.g., vmbr0)"
   type        = string
   default     = "vmbr0"
 }
@@ -55,19 +59,17 @@ variable "ssh_public_key" {
   type        = string
 }
 
-# Node counts based on template
-variable "master_nodes" {
-  description = "Number of master nodes"
+# Node counts from template
+variable "master_count" {
+  description = "Number of master nodes (from template)"
   type        = number
-  
-  default = 1
+  default     = 1
 }
 
-variable "worker_nodes" {
-  description = "Number of worker nodes"
+variable "worker_count" {
+  description = "Number of worker nodes (from template)"
   type        = number
-  
-  default = 1
+  default     = 2
 }
 
 # Master node configuration
