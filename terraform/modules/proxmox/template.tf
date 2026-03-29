@@ -23,6 +23,7 @@ resource "proxmox_vm_qemu" "k3s_template" {
   
   # Network configuration
   network {
+    id     = 0
     model  = "virtio"
     bridge = var.network_bridge
   }
