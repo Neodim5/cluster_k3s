@@ -244,7 +244,7 @@ custom_options = {
 
 1. Скачайте образ Ubuntu 22.04 LTS:
    ```bash
-   wget https://releases.ubuntu.com/jammy/ubuntu-22.04.3-live-server-amd64.iso -P /var/lib/vz/template/iso/
+   wget https://releases.ubuntu.com/jammy/ubuntu-22.04.5-live-server-amd64.iso -P /var/lib/vz/template/iso/
    ```
 
 2. Или через веб-интерфейс Proxmox:
