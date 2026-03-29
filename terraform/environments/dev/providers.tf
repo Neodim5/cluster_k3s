@@ -6,6 +6,10 @@ terraform {
       version = "~> 2.9.0"
     }
   }
+  
+  backend "local" {
+    path = "terraform.tfstate"
+  }
 }
 
 provider "proxmox" {
@@ -14,11 +18,4 @@ provider "proxmox" {
   
   # Skip TLS verification for self-signed certificates (development only)
   pm_tls_insecure = true
-}
-
-# Local backend for state storage
-terraform {
-  backend "local" {
-    path = "terraform.tfstate"
-  }
 }
