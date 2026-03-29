@@ -20,6 +20,7 @@ resource "proxmox_vm_qemu" "masters" {
   
   # Network configuration
   network {
+    id     = 0
     model  = "virtio"
     bridge = var.network_bridge
   }
@@ -79,6 +80,7 @@ resource "proxmox_vm_qemu" "workers" {
   
   # Network configuration
   network {
+    id     = 0
     model  = "virtio"
     bridge = var.network_bridge
   }
