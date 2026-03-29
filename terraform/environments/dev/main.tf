@@ -32,11 +32,11 @@ module "proxmox_k3s" {
   # SSH configuration
   ssh_public_key = var.ssh_public_key
   
-  tags = [
-    "k3s",
-    "cluster-${var.environment}",
-    "managed-by-terraform"
-  ]
+  #tags = [
+  #  "k3s",
+  #  "cluster-${var.environment}",
+  #  "managed-by-terraform"
+  #]
 }
 
 # Outputs
